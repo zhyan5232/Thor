@@ -19,7 +19,7 @@ public class ZeroCopySender {
     private static final Logger log = LoggerFactory.getLogger(ZeroCopySender.class);
     private final EventLoopGroup group = new NioEventLoopGroup();
 
-    public void sendFile(String ip, int port, String taskId, String filePath) {
+    public void sendFile(String ip, int port, String taskId, String filePath, String logicalFileName) {
         File file = new File(filePath);
         if (!file.exists()) {
             log.error("待发送文件不存在: {}", filePath);
@@ -36,10 +36,10 @@ public class ZeroCopySender {
                 ch.pipeline().addLast(new ChannelInboundHandlerAdapter() {
                     @Override
                     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-                        // 2. 发送启动指令 (JSON)
+                        // 【修改】：在发送 JSON 启动指令时，强制使用 logicalFileName，而不是物理的 file.getName()
                         String json = String.format(
                                 "{\"code\":\"thor.node.transfer_start\",\"task_id\":\"%s\",\"file_name\":\"%s\",\"file_size\":%d}",
-                                taskId, file.getName(), file.length()
+                                taskId, logicalFileName, file.length()
                         );
                         log.info(">>> [1/2] 发送启动指令: {}", taskId);
                         ctx.write(new ThorMessage(ThorMessage.TYPE_JSON_CMD, json.getBytes(StandardCharsets.UTF_8)));

@@ -7,6 +7,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.io.FileWriter;
+import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Map;
@@ -45,12 +47,31 @@ public class FileReceiver {
                 FileStateManager.clearState(taskId);
                 contextMap.remove(taskId);
                 log.info(">>> [100%] 传输落地成功 (0字节空文件秒传): {}", ctx.savePath);
+                // 【新增调用】
+                generateIndFile(ctx.savePath, ctx.fileName, totalSize);
             } catch (Exception e) {
                 log.error("处理0字节文件异常", e);
             }
         }
     }
 
+    /**
+     * 【新增】：严格按照 FEX 规范生成落地的 .ind 校验文件
+     */
+    private void generateIndFile(String datFilePath, String fileName, long totalSize) {
+        try {
+            String indFilePath = datFilePath.substring(0, datFilePath.lastIndexOf('.')) + ".ind";
+            try (PrintWriter writer = new PrintWriter(new FileWriter(indFilePath))) {
+                // 第一行：写入系统默认编码 UTF-8
+                writer.println("UTF-8");
+                // 第二行：文件名、预估行数(这里用1代指)、总字节数
+                writer.println(fileName + " 1 " + totalSize);
+            }
+            log.info(">>> [系统协同] 目标端 .ind 校验文件已自动生成: {}", indFilePath);
+        } catch (Exception e) {
+            log.error("生成 .ind 校验文件失败", e);
+        }
+    }
     public void processIncomingBlock(Channel channel, String taskId, byte[] payload) {
         if (taskId == null) {
             log.error("收到匿名流数据，无 TaskID 绑定，丢弃数据");
@@ -77,6 +98,8 @@ public class FileReceiver {
                 FileChannelCache.closeAndRemove(taskId);
                 FileStateManager.clearState(taskId);
                 contextMap.remove(taskId);
+                // 【新增调用】
+                generateIndFile(ctx.savePath, ctx.fileName, ctx.totalSize);
             }
         } catch (Exception e) {
             log.error("写入磁盘失败: {}", taskId, e);

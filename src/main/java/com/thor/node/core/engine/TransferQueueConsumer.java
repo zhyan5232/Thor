@@ -52,10 +52,15 @@ public class TransferQueueConsumer {
                 int port = cfg.path("dst_port").asInt();
                 String srcPath = cfg.path("src_file_name").asText();
 
-                // 3. 【核心修正点】
-                // 直接调用 sendFile 即可，不要用 if 接收返回值。
-                // 物理传输的最终结果（成功/失败）会由 ZeroCopySender 内部的异步监听器输出日志。
-                zeroCopySender.sendFile(ip, port, task.getTaskId(), srcPath);
+                // 【新增】：提取原始的逻辑文件名 (比如 fex_test.dat)
+                String originalFileName = srcPath;
+                if (srcPath.endsWith(".utf8")) {
+                    originalFileName = srcPath.substring(0, srcPath.length() - 5);
+                }
+                String logicalFileName = new java.io.File(originalFileName).getName();
+
+                // 【修改】：给 sendFile 增加一个逻辑文件名的参数
+                zeroCopySender.sendFile(ip, port, task.getTaskId(), srcPath, logicalFileName);
 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
