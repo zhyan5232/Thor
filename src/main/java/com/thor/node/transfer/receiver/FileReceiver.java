@@ -61,13 +61,28 @@ public class FileReceiver {
     private void generateIndFile(String datFilePath, String fileName, long totalSize) {
         try {
             String indFilePath = datFilePath.substring(0, datFilePath.lastIndexOf('.')) + ".ind";
-            try (PrintWriter writer = new PrintWriter(new FileWriter(indFilePath))) {
-                // 第一行：写入系统默认编码 UTF-8
-                writer.println("UTF-8");
-                // 第二行：文件名、预估行数(这里用1代指)、总字节数
-                writer.println(fileName + " 1 " + totalSize);
+
+            // 【新增】：精准统计真实行数 (替代硬编码的 1)
+            long recordCount = 0;
+            if (totalSize > 0) {
+                // 使用 Java NIO 的懒加载 Stream 高效读取文件行数，防 OOM
+                try (java.util.stream.Stream<String> lines = java.nio.file.Files.lines(java.nio.file.Paths.get(datFilePath), java.nio.charset.StandardCharsets.UTF_8)) {
+                    recordCount = lines.count();
+                } catch (Exception e) {
+                    log.warn("行数统计异常，默认置为0", e);
+                }
             }
-            log.info(">>> [系统协同] 目标端 .ind 校验文件已自动生成: {}", indFilePath);
+
+            // 【核心修复】：放弃 PrintWriter，使用底层字节流强控格式
+            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(indFilePath)) {
+                String line1 = "UTF-8\n";
+                // 注意：末尾坚决不加 \n，彻底消灭幽灵第三行
+                String line2 = fileName + "\t" + totalSize + "\t" + recordCount;
+
+                fos.write(line1.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                fos.write(line2.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
+            log.info(">>> [系统协同] 目标端 .ind 校验文件已自动生成: {} (真实行数: {})", indFilePath, recordCount);
         } catch (Exception e) {
             log.error("生成 .ind 校验文件失败", e);
         }

@@ -1,5 +1,7 @@
 package com.thor.node.transfer.sender;
 
+import com.thor.node.core.entity.ThorTaskInstance;
+import com.thor.node.core.mapper.ThorTaskInstanceMapper;
 import com.thor.node.network.codec.ThorEncoder;
 import com.thor.node.network.protocol.ThorMessage;
 import io.netty.bootstrap.Bootstrap;
@@ -8,6 +10,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -18,6 +21,10 @@ import java.nio.charset.StandardCharsets;
 public class ZeroCopySender {
     private static final Logger log = LoggerFactory.getLogger(ZeroCopySender.class);
     private final EventLoopGroup group = new NioEventLoopGroup();
+
+    // 【新增注入】：注入流水表 Mapper
+    @Autowired
+    private ThorTaskInstanceMapper instanceMapper;
 
     public void sendFile(String ip, int port, String taskId, String filePath, String logicalFileName) {
         File file = new File(filePath);
@@ -56,13 +63,32 @@ public class ZeroCopySender {
                         FileRegion region = new DefaultFileRegion(raf.getChannel(), 0, file.length());
 
                         ctx.writeAndFlush(region).addListener((ChannelFutureListener) future -> {
+                            ThorTaskInstance updateInstance = new ThorTaskInstance();
+                            updateInstance.setTaskId(taskId);
+                            updateInstance.setEndTime(new java.util.Date());
+
                             if (future.isSuccess()) {
                                 log.info(">>> 任务 [{}] 物理传输成功落地！", taskId);
+                                updateInstance.setStatus("SUCCESS");
                             } else {
                                 log.error(">>> 任务 [{}] 物理传输失败: ", taskId, future.cause());
+                                updateInstance.setStatus("FAILED");
+                                updateInstance.setErrorMsg(future.cause().getMessage());
                             }
+                            instanceMapper.updateById(updateInstance);
+
                             raf.close();
                             ctx.close();
+
+                            // ==========================================
+                            // 【核心修复：空间释放机制】阅后即焚临时产生的 .utf8 文件
+                            if (file.getName().endsWith(".utf8")) {
+                                boolean deleted = file.delete();
+                                if (deleted) {
+                                    log.info(">>> [空间释放] 临时转码文件已自动清除: {}", file.getName());
+                                }
+                            }
+                            // ==========================================
                         });
                     }
                 });

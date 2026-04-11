@@ -10,7 +10,11 @@ spring:
   # 禁用内嵌 Tomcat 启动，释放内存给 Netty
   main:
     web-application-type: none
-
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/thor_db?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456 # 请替换为您的密码
 # 2. Thor 业务引擎全局配置
 thor:
   # 节点身份信息 (对标原 conf.node)

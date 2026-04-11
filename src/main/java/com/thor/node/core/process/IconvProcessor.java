@@ -39,15 +39,20 @@ public class IconvProcessor {
 
             String line;
             long lineCount = 0;
+            boolean isFirstLine = true; // 【新增】首行标志位
+
             while ((line = reader.readLine()) != null) {
+                // 【核心修复】：将 \n 加在上一行的末尾，而不是当前行的末尾，避免最后多出一个空行
+                if (!isFirstLine) {
+                    writer.write("\n");
+                }
                 writer.write(line);
-                // FEX 规范 7.5: 强制各行之间使用换行符(0x0A，即 \n)，不采用 DOS 格式的 \r\n
-                writer.write("\n");
+                isFirstLine = false;
                 lineCount++;
             }
             log.info(">>> [数据清洗] 转码大捷！共处理 {} 行，输出文件: {}", lineCount, destPath);
             return true;
-            
+
         } catch (Exception e) {
             log.error(">>> [异常] Iconv 转码过程发生崩溃", e);
             return false;
