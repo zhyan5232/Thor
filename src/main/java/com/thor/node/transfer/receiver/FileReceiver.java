@@ -28,11 +28,27 @@ public class FileReceiver {
         ctx.totalSize = totalSize;
         ctx.savePath = receivedHome + "/" + fileName;
         contextMap.put(taskId, ctx);
+
         log.info("======= [物理建档开始] =======");
         log.info("任务ID: {}", taskId);
         log.info("存入路径: {}", ctx.savePath);
         log.info("预期大小: {}", totalSize);
         log.info("============================");
+
+        // 【新增】：完美兼容 FEX 7.5 规范的 0字节空文件场景
+        if (totalSize == 0) {
+            try {
+                // 强制触发物理建档
+                FileChannelCache.getWriteChannel(taskId, ctx.savePath);
+                // 瞬间关闭并落盘
+                FileChannelCache.closeAndRemove(taskId);
+                FileStateManager.clearState(taskId);
+                contextMap.remove(taskId);
+                log.info(">>> [100%] 传输落地成功 (0字节空文件秒传): {}", ctx.savePath);
+            } catch (Exception e) {
+                log.error("处理0字节文件异常", e);
+            }
+        }
     }
 
     public void processIncomingBlock(Channel channel, String taskId, byte[] payload) {
