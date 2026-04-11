@@ -1,0 +1,44 @@
+# ===================================================================
+# Thor (雷神) 分布式节点核心配置
+# 完美对标并替代原 Lua 系统的 data.json / conf.json
+# ===================================================================
+
+# 1. Spring 应用基础配置
+spring:
+  application:
+    name: thor-node
+  # 禁用内嵌 Tomcat 启动，释放内存给 Netty
+  main:
+    web-application-type: none
+
+# 2. Thor 业务引擎全局配置
+thor:
+  # 节点身份信息 (对标原 conf.node)
+  node:
+    name: "BDP"       # 节点名称
+    is-center: false       # 是否为中心节点
+    data-home: "E:/thor_workspace/data" # 数据文件根目录
+    proc-home: "E:/thor_workspace/proc" # 处理工作区根目录
+    received-home: "E:/thor_workspace/received"
+
+  # 网络与传输配置 (对标原 data_addr 与 fex.block_size)
+  server:
+    port: 5599             # Netty 监听端口
+    data-timeout: 300      # 网络超时时间(秒)
+
+  # 队列与线程池配置
+  engine:
+    # 不配则默认使用 CPU 核心数，配置则强制覆盖
+    process-threads: 4     # 数据处理线程数 (CPU 密集)
+    transfer-threads: 8    # 文件传输线程数 (I/O 密集)
+
+  # 清理与守护配置
+  task:
+    clean-days: 7          # 日志与临时文件保留天数
+    scan-interval: 30      # 目录扫描间隔(秒)
+    state-path: "E:/thor_workspace/tmp"
+# 3. 异步日志级别控制 (配合 logback-spring.xml)
+logging:
+  level:
+    com.thor.node: DEBUG   # 调试期开 DEBUG，上生产改 INFO
+    io.netty: INFO
