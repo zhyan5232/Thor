@@ -1,4 +1,4 @@
-package com.thor.node.scanner;
+package com.thor.node.core.scanner;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
