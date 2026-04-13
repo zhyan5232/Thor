@@ -1,0 +1,17 @@
+server:
+  port: 8080 # 控制面专属端口，与前端联调对接
+
+spring:
+  application:
+    name: thor-admin-api
+  datasource:
+    # 请填入你实际的数据库账号密码，必须与 thor-node 连的是同一个库！
+    url: jdbc:mysql://localhost:3306/thor_db?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml # 扫描 Common 下的 XML
+  configuration:
+    map-underscore-to-camel-case: true
